@@ -4,45 +4,46 @@ import android.content.res.Configuration
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import androidx.appcompat.app.AlertDialog
+import java.util.Collections.copy
 
-class MainActivity : AppCompatActivity(), ShowInfo, SaveChanges {
+class MainActivity : AppCompatActivity(R.layout.activity_main), SaveChanges, ShowInfo,
+    DeleteContact {
 
     private var isLandScape: Boolean = false
-    private lateinit var contactList: ArrayList<Contact>
+
     private lateinit var listFragment: ListFragment
     private lateinit var infoFragment: InfoFragment
 
     companion object {
+        var contactList = ContactGenerator().generateContacts()
+        var newContactList: ArrayList<Contact> = contactList.clone() as ArrayList<Contact>
         lateinit var showInfo: ShowInfo
         lateinit var saveChanges: SaveChanges
+        lateinit var deleteContact: DeleteContact
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
 
         showInfo = this
         saveChanges = this
+        deleteContact = this
 
         val orientation = resources.configuration.orientation
         isLandScape = orientation == Configuration.ORIENTATION_LANDSCAPE
 
-        contactList = arrayListOf(
-            Contact(0, "Vasya", "Golovach", "0993151777"),
-            Contact(1, "Dima", "Silver", "0936631456"),
-            Contact(2, "Grusha", "Bybna", "0315522953")
-        )
-
         if (!isLandScape) {
             supportFragmentManager.beginTransaction().run {
-                listFragment = ListFragment.newInstance(contactList)
+                listFragment = ListFragment.newInstance()
+                Log.d("AAA", "ASfg")
                 replace(R.id.frameLayout, listFragment)
                 commit()
             }
         } else {
             Log.d("sss", "LandScope")
             supportFragmentManager.beginTransaction().run {
-                listFragment = ListFragment.newInstance(contactList)
+                listFragment = ListFragment.newInstance()
                 infoFragment = InfoFragment.newInstance(Contact(-1, "", "", ""))
                 replace(R.id.frameLayout, listFragment)
                 replace(R.id.frameLayout2, infoFragment)
@@ -66,25 +67,47 @@ class MainActivity : AppCompatActivity(), ShowInfo, SaveChanges {
     }
 
     override fun onButtonClicked(contact: Contact) {
-        contactList[contact.id].name = contact.name
-        contactList[contact.id].surname = contact.surname
-        contactList[contact.id].number = contact.number
-
+        var index = 0
+        for (i in contactList) {
+            if (i.id == contact.id) break
+            else index++
+        }
+        contactList[index] = contact
+        newContactList[index] = contact
         if (!isLandScape) {
             supportFragmentManager.beginTransaction().run {
-                listFragment = ListFragment.newInstance(contactList)
+                listFragment = ListFragment.newInstance()
                 replace(R.id.frameLayout, listFragment)
                 commit()
             }
         } else {
             Log.d("sss", "LandScope")
             supportFragmentManager.beginTransaction().run {
-                listFragment = ListFragment.newInstance(contactList)
+                listFragment = ListFragment.newInstance()
                 infoFragment = InfoFragment.newInstance(contact)
                 replace(R.id.frameLayout, listFragment)
                 replace(R.id.frameLayout2, infoFragment)
                 commit()
             }
         }
+    }
+
+    override fun onLongClicked(contact: Contact): Boolean {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Delete item")
+        builder.setMessage("You wanna delete ${contact.name}?")
+
+        builder.setPositiveButton(android.R.string.yes) { dialog, which ->
+            newContactList.remove(contact)
+            ListFragment().update(newContactList)
+            contactList.remove(contact)
+        }
+
+        builder.setNegativeButton(android.R.string.no) { dialog, which ->
+            dialog.cancel()
+        }
+
+        builder.show()
+        return true
     }
 }
